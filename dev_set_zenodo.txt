@@ -1,0 +1,12 @@
+https://zenodo.org/records/19328046/files/DCASE2026Task4Dataset.z01
+https://zenodo.org/records/19328046/files/DCASE2026Task4Dataset.z02
+https://zenodo.org/records/19328046/files/DCASE2026Task4Dataset.z03
+https://zenodo.org/records/19328046/files/DCASE2026Task4Dataset.z04
+https://zenodo.org/records/19328046/files/DCASE2026Task4Dataset.z05
+https://zenodo.org/records/19328046/files/DCASE2026Task4Dataset.z06
+https://zenodo.org/records/19328046/files/DCASE2026Task4Dataset.z07
+https://zenodo.org/records/19328046/files/DCASE2026Task4Dataset.z08
+https://zenodo.org/records/19328046/files/DCASE2026Task4Dataset.z09
+https://zenodo.org/records/19328046/files/DCASE2026Task4Dataset.z10
+https://zenodo.org/records/19328046/files/DCASE2026Task4Dataset.zip
+https://zenodo.org/records/19328046/files/LISENCE.pdf

@@ -1,0 +1,45 @@
+dataset:
+    module: src.datamodules.dataset
+    main: DatasetS3
+    args:
+        config:
+            mode: waveform
+            soundscape_dir: data/dev_set/synthesized/test/soundscape
+            oracle_target_dir: data/dev_set/synthesized/test/oracle_target
+            sr: 32000
+        n_sources: 3
+        label_set: dcase2026t4
+        return_source: true
+        label_vector_mode: stack
+        silence_label_mode: onehot
+        return_meta: false
+model:
+    module: src.models.s5.s5
+    main: S5
+    args:
+        label_set: dcase2026t4
+        tagger_ckpt: checkpoint/m2dat_4c.ckpt
+        separator_ckpt: checkpoint/resunetk.ckpt
+
+        tagger_config:
+            module: src.models.m2dat.m2dat_spatial
+            main: M2dAtSpatial
+            args:
+                weight_file: checkpoint/m2d_as_vit_base-80x1001p16x16p32k-240413_AS-FT_enconly/weights_ep69it3124-0.47998.pth
+                num_classes: 19
+                num_outputs: 3
+                finetuning_layers: head
+                nchan: 4
+                head_layer: catchan_average_linear
+                head_args:
+                    track_input_dim: 1024
+                    track_hidden_dim: 512
+        separator_config:
+            module: src.models.resunet2.resunet_mod
+            main: ResUNet30
+            args:
+                input_channels: 4
+                output_channels: 1
+                target_sources_num: 3
+                label_len: 54
+

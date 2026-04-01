@@ -1,0 +1,149 @@
+---
+task_name: __
+description: __
+
+deterministic: True
+manual_seed: 0
+
+datamodule:
+    module: src.datamodules.datamodule
+    main: DataModule
+    args:
+        train_dataloader:
+            batch_size: 32
+            num_workers: 8
+            persistent_workers: false
+            dataset:
+                module: src.datamodules.dataset
+                main: DatasetS3
+                args:
+                    config:
+                        mode: generate
+                        spatial_sound_scene:
+                            duration: 10.0
+                            sr: 32000
+                            max_event_overlap: 3
+                            max_event_dur: 10.0
+                            ref_db: -55
+                            foreground_dir: data/dev_set/sound_event/train
+                            background_dir: data/dev_set/noise/train
+                            interference_dir: data/dev_set/interference/train
+                            room_config:
+                                module: src.modules.spatial_audio_synthesizer.room
+                                main: SofaRoom
+                                args:
+                                    path: data/dev_set/room_ir/train
+                                    direct_range_ms: [6, 50]
+                        dupse_rate: 0.5
+                        dupse_min_angle: 60.0
+                        max_n_dupse: 2
+                        dupse_exclusion_folder_depth: 1
+                        snr_range: [5, 20]
+                        nevent_range: [0, 3]
+                        ninterference_range: [0, 2]
+                        inteference_snr_range: [0, 15]
+                        dataset_length: 25088
+                        shuffle_label: true
+                        fg_return: {dry: true, dry_channel: 0, metadata: true}
+                    n_sources: 3
+                    label_set: dcase2026t4
+                    return_source: false
+                    label_vector_mode: stack
+                    silence_label_mode: onehot
+                    return_meta: false
+        val_dataloader:
+            batch_size: 16
+            num_workers: 4
+            persistent_workers: false
+            dataset:
+                module: src.datamodules.dataset
+                main: DatasetS3
+                args:
+                    config:
+                        mode: metadata
+                        metadata_list: data/dev_set/metadata/valid.json
+                        fg_return: {dry: true, dry_channel: 0, metadata: true}
+                        sr: 32000
+                    n_sources: 3
+                    label_set: dcase2026t4
+                    return_source: false
+                    label_vector_mode: stack
+                    silence_label_mode: onehot
+                    return_meta: false
+lightning_module:
+    module: src.training.lightningmodule.audio_tagging
+    main: AudioTagging
+    args:
+        model:
+            module: src.models.m2dat.m2dat
+            main: M2dAt
+            args:
+                weight_file: checkpoint/m2d_as_vit_base-80x1001p16x16p32k-240413_AS-FT_enconly/weights_ep69it3124-0.47998.pth
+                num_classes: 19
+                num_outputs: 3
+                finetuning_layers: head
+                ref_channel: 0
+                head_layer: average_linear
+                head_args:
+                    track_input_dim: 1024
+                    track_hidden_dim: 512
+        loss:
+            module: src.training.loss.label_loss
+            main: get_loss_func
+        optimizer:
+            module: torch.optim
+            main: AdamW
+            args:
+                params: null # assigned in src.training.label_query_separation
+                lr: 0.001
+                betas: [0.9, 0.999]
+                eps: 0.00000001
+                weight_decay: 0.0
+                amsgrad: true
+        is_validation: true
+train:
+    callbacks:
+        -
+            name: checkpoint
+            module: lightning.pytorch.callbacks
+            main: ModelCheckpoint
+            args:
+                every_n_epochs: 1
+                filename: "{epoch}"
+                save_top_k: 1
+                save_last: True
+                monitor: epoch_val/loss # check log in src.training.label_query_separation
+                mode: min
+                verbose: False
+                dirpath: null # Assigned in src.train
+        -
+            name: tqdm
+            module: lightning.pytorch.callbacks
+            main: TQDMProgressBar
+            args:
+                refresh_rate: 60
+                process_position: 0
+    trainer:
+        module: lightning.pytorch
+        main: Trainer
+        args:
+            accelerator: auto
+            devices: auto
+            strategy: ddp_find_unused_parameters_true
+            num_nodes: 1
+            precision: 32-true
+            logger: null
+            fast_dev_run: False
+            max_epochs: 300
+            log_every_n_steps: 100
+            use_distributed_sampler: True
+            sync_batchnorm: True
+            check_val_every_n_epoch: 1
+            val_check_interval: 1.0
+            num_sanity_val_steps: 0
+            enable_checkpointing: True
+            enable_progress_bar: True
+            enable_model_summary: True
+            limit_train_batches: null
+            limit_val_batches: null
+            gradient_clip_val: 0.5
