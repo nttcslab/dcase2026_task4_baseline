@@ -15,7 +15,7 @@ For the AT model, we provide two variants: one that uses a single channel of the
 
 ### Dataset and folder structure
 The data consists of two parts: the development dataset and the evaluation dataset.
-The development dataset is constructed based on [DCASE2025 Task4 Dataset](https://zenodo.org/records/15117227) by incorporating newly recorded target events, RIRs, and background noise, using a similar recording setup.
+The development dataset (provided as [DCASE2026 Task4 Dataset](https://zenodo.org/records/19328046)) is constructed based on the previous [DCASE2025 Task4 Dataset](https://zenodo.org/records/15117227) by incorporating newly recorded target events, RIRs, and background noise, using a similar recording setup.
 The evaluation dataset will be released at a later stage.
 
 The structure of the data is as follows (`data/dev_set` folder contains the development dataset):
