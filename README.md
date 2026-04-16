@@ -206,6 +206,10 @@ Accuracy (source) : 70.394
 ```
 To evaluate other model checkpoints, specify their paths under `tagger_ckpt` and `separator_ckpt` in the corresponding config files located in `src/evaluation/eval_configs`.
 
+## License 
+This project is licensed under the terms described in [LICENSE.pdf](LICENSE.pdf).
+
+
 # Citation
 If you use this system, please cite the following papers:
 
