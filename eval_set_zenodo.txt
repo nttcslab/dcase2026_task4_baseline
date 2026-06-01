@@ -1,0 +1,5 @@
+https://zenodo.org/records/20425860/files/DCASE2026Task4EvaluationDataset.z01
+https://zenodo.org/records/20425860/files/DCASE2026Task4EvaluationDataset.z02
+https://zenodo.org/records/20425860/files/DCASE2026Task4EvaluationDataset.z03
+https://zenodo.org/records/20425860/files/DCASE2026Task4EvaluationDataset.z04
+https://zenodo.org/records/20425860/files/DCASE2026Task4EvaluationDataset.zip

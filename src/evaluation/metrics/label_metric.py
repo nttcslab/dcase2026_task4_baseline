@@ -48,16 +48,16 @@ class LabelMetric():
         common = est_count & ref_count
 
         acc = (est_count == ref_count)
-        num_ref = len(ref_label)
+        # num_ref = len(ref_label)
         tp = sum(list(common.values()))
         fp = len(est_label) - tp
         fn = len(ref_label) - tp
         assert ((fn + fp) == 0) == acc # 2 ways to calculate accuracy
         return {
-            'ref_label': ref_label,
+            # 'ref_label': ref_label,
             'acc': acc,
             'tp': tp,
             'fp': fp,
             'fn': fn,
-            'nref': num_ref,
+            # 'nref': num_ref,
         }

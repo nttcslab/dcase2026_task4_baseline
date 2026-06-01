@@ -1,13 +1,9 @@
-import random
 import numpy as np
 import yaml
 import json
 from tqdm import tqdm
 import torch
-from torchmetrics.functional import(
-    scale_invariant_signal_noise_ratio as si_snr,
-    signal_noise_ratio as snr)
-import os, sys;
+import os, sys
 import argparse
 import soundfile as sf
 
@@ -25,6 +21,7 @@ class Evaluator:
                  config_path,
                  waveform_output_dir = '',
                  result_dir = '',
+                 result_filename='',
                  batch_size=2,
                 use_cpu=False):
         self.config_path = config_path
@@ -32,12 +29,14 @@ class Evaluator:
         self.batch_size = batch_size
         self.waveform_output_dir = os.path.join(waveform_output_dir, self.filename) if waveform_output_dir else waveform_output_dir
         self.result_dir = result_dir
+        self.result_filename = result_filename
         self.use_cpu = use_cpu
 
         if self.waveform_output_dir: os.makedirs(self.waveform_output_dir, exist_ok=True)
-        
+
 
         with open(self.config_path) as f: config = yaml.safe_load(f)
+        self.config = config
         dsconfig = config['dataset']
         self.use_generated_waveform = 'estimate_target_dir' in dsconfig['args']['config'] # if estimate_target_dir is provided, generated waveforms are used to evaluate
         assert not self.use_generated_waveform or not self.waveform_output_dir, 'if estimate_target_dir is provided in the dataset, waveform will not be generated again (waveform_output_dir should not be specified)'
@@ -51,7 +50,7 @@ class Evaluator:
                                 num_workers=batch_size*2)
         if not self.use_generated_waveform:
             model = initialize_config(config['model'], reload=True)
-            model.eval();
+            model.eval()
             if not self.use_cpu: model = model.to('cuda')
             self.model = model
 
@@ -60,11 +59,12 @@ class Evaluator:
         self.dataloader = dataloader
 
     def predict(self, mixture, labels=None):
+        assert hasattr(self, "model"), "Model not loaded."
         if not self.use_cpu: mixture = mixture.to('cuda')
         if labels is not None:
             with torch.no_grad():
                 batch_est_labels = labels
-                output = model.separate(mixture, batch_est_labels)
+                output = self.model.separate(mixture, batch_est_labels)
                 batch_est_waveforms = output['waveform'] # [bs, nsources, wlen]
                 output['label'] = labels # bs, nsources
                 output['probabilities'] = torch.ones(batch_est_waveforms.shape[:2], dtype=torch.float32)# bs, nsources
@@ -130,17 +130,31 @@ class Evaluator:
                     results.append(reobj)
                     # import pdb; pdb.set_trace()
 
-        for metric_func in metric_funcs: metric_func.compute(is_print=True)
+        result_summary = {}
+
+        for metric_func in metric_funcs:
+            result_summary[getattr(metric_func, "metric_name")] = metric_func.compute(is_print=True)
+        if not self.use_generated_waveform:
+            total_params = sum(p.numel() for p in self.model.parameters())
+            print(f"Total parameters: {total_params:,}")
+            result_summary['nparams']=total_params
         if self.result_dir:
             os.makedirs(self.result_dir, exist_ok=True)
-            with open(os.path.join(self.result_dir, f"{self.filename}_results.json"), "w") as outfile:
-                json.dump(results, outfile, indent=4)
+            result_summary['details'] = results
+            if hasattr(self, "config"): result_summary['config'] = self.config
+            if self.result_filename:
+                result_filename = self.result_filename if self.result_filename.endswith('.json') else self.result_filename + '.json'
+            else:
+                result_filename = f"{self.filename}_results.json"
+            with open(os.path.join(self.result_dir, result_filename), "w") as outfile:
+                json.dump(result_summary, outfile, indent=4)
 
 def main(args):
     evalobj = Evaluator(
                  args.config,
                  args.waveform_output_dir,
                  args.result_dir,
+                 args.result_filename,
                  args.batchsize,
                  args.cpu)
     evalobj.evaluate()
@@ -150,6 +164,7 @@ if __name__ == '__main__':
     parser.add_argument("--config", "-c", type=str, required=True,)
     parser.add_argument("--waveform_output_dir", type=str, required=False, default='')
     parser.add_argument("--result_dir", type=str, required=False, default='')
+    parser.add_argument("--result_filename", type=str, required=False, default='')
     parser.add_argument("--cpu", action="store_true")
     parser.add_argument("--batchsize","-b", type=int, required=False, default=2)
 
@@ -159,4 +174,4 @@ if __name__ == '__main__':
 
 # python -m src.evaluation.evaluate -c src/evaluation/eval_configs/m2dat_4c_resunetk.yaml --result_dir workspace/evaluation
 # python -m src.evaluation.evaluate -c src/evaluation/eval_configs/m2dat_1c_resunetk.yaml --result_dir workspace/evaluation
- 
+

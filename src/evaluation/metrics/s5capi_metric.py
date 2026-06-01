@@ -25,7 +25,7 @@ class S5ClassAwareMetric():
         }
         if is_print:
             print('%s: %.3f'%(self.metric_name, reobj['mean']))
-        return 
+        return reobj
         
     def reset(self): self.metric_values = []
     

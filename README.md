@@ -50,6 +50,22 @@ The `synthesized/test` folder contains test data for evaluating model checkpoint
 
 The DCASE2026Task4Dataset: A Dataset for Spatial Semantic Segmentation of Sound Scenes is available on [Zenodo](https://zenodo.org/records/19328046).
 
+### Evaluation dataset folder structure
+The DCASE2026Task4EvaluationDataset: The Evaluation Dataset for Spatial Semantic Segmentation of Sound Scenes is availabel at https://zenodo.org/records/20425860.
+The structure of the Evaluation dataset (`data/eval_set`) is as follows:
+```
+data
+`-- eval_set
+    `-- synthesized
+        `-- eval
+            `-- soundscape
+                |-- eval_0000.wav
+                |-- ...
+                `-- eval_2566.wav
+```
+The soundscape folder contains 2567 multichannel audio mixtures, either synthesized or real recordings.
+The first 1,512 samples are used for Challenge ranking, while the remaining samples are used for analysis.
+
 ### Related Repositories
 Part of `src/models/resunet` originates from  https://github.com/bytedance/uss/tree/master/uss/models \
 Part of `src/models/m2dat` originates from  https://github.com/nttcslab/m2d
@@ -206,6 +222,29 @@ Accuracy (source) : 70.394
 ```
 To evaluate other model checkpoints, specify their paths under `tagger_ckpt` and `separator_ckpt` in the corresponding config files located in `src/evaluation/eval_configs`.
 
+## Generate Data for Final Submission
+Download evaluation dataset
+```
+# Download all files from https://zenodo.org/records/20425860 and unzip
+wget -i eval_set_zenodo.txt
+zip -s 0 DCASE2026Task4EvaluationDataset.zip --out eval_set_full.zip
+unzip eval_set_full.zip
+
+# Place the DCASE2026Task4EvaluationDataset/data/eval_set in dcase2026_task4_baseline/data folder
+ln -s "$(pwd)/DCASE2026Task4EvaluationDataset/data/eval_set" "/path/to/dcase2026_task4_baseline/data"
+```
+
+Submission data can be generated using:
+```
+bash generate_waveform.sh --config src/evaluation/eval_configs/m2dat_1c_resunetk_eval.yaml --output_dir workspace/submission --author Nguyen --affiliation NTT --submission_number 1
+# output: workspace/submission/Nguyen_NTT_task4_1_out.zip
+
+bash generate_waveform.sh --config src/evaluation/eval_configs/m2dat_4c_resunetk_eval.yaml --output_dir workspace/submission --author Nguyen --affiliation NTT --submission_number 2
+# output: workspace/submission/Nguyen_NTT_task4_2_out.zip
+```
+
+These commands will generate audio files in the specified `output_dir`, and then create the zip files, `Nguyen_NTT_task4_1_out.zip` and `Nguyen_NTT_task4_2_out.zip`, which are ready for the submission.
+
 ## License 
 This project is licensed under the terms described in [LICENSE.pdf](LICENSE.pdf).
 
@@ -214,19 +253,19 @@ This project is licensed under the terms described in [LICENSE.pdf](LICENSE.pdf)
 If you use this system, please cite the following papers:
 
 ```
-@inproceedings{nguyen2026capisdr,
+@article{nguyen2026dcase,
+  title={Description and Discussion on DCASE 2026 Challenge task 4: Spatial Semantic Segmentation of Sound Scenes},
+  author={Nguyen, Binh Thien and Yasuda, Masahiro and Harada, Noboru and Serizel, Romain and Mishra, Mayank and Delcroix, Marc and Carlos, Hernandez-Olivan and Araki, Shoko and Takeuchi, Daiki and Nakatani, Tomohiro and Ono, Nobutaka},
+  journal={arXiv preprint arXiv:2604.00776},
+  year={2026},
+  url={https://arxiv.org/pdf/2604.00776}
+}
+
+@inproceedings{nguyen2026icassp,
   title={Class-Aware Permutation-Invariant Signal-to-Distortion Ratio for Semantic Segmentation of Sound Scene with Same-Class Sources},
   author={Nguyen, Binh Thien and Yasuda, Masahiro and Takeuchi, Daiki and Niizumi, Daisuke and Harada, Noboru},
   booktitle={2026 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)},
   year={2026},
   url={https://arxiv.org/pdf/2601.22504}
-}
-
-@article{yasuda2026dcase,
-  title={Description and Discussion on DCASE 2026 Challenge task 4: Spatial Semantic Segmentation of Sound Scenes},
-  author={Yasuda, Masahiro and Nguyen, Binh Thien and Harada, Noboru and Serizel, Romain and Mishra, Mayank and Delcroix, Marc and Carlos, Hernandez-Olivan and Araki, Shoko and Takeuchi, Daiki and Nakatani, Tomohiro and Ono, Nobutaka},
-  journal={arXiv preprint arXiv:2604.00776},
-  year={2026},
-  url={https://arxiv.org/pdf/2604.00776}
 }
 ```
