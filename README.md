@@ -1,3 +1,5 @@
+KUBIG 26-1
+
 # Spatial Semantic Segmentation of Sound Scenes
 
 This is a baseline implementation for the [DCASE2026 Challenge Task 4: Spatial Semantic Segmentation of Sound Scenes](https://dcase.community/challenge2026/task-spatial-semantic-segmentation-of-sound-scenes).
