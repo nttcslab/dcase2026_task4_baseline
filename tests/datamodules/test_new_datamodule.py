@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import torch
+from torch.utils.data import RandomSampler
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
@@ -121,7 +122,8 @@ class TestDataModule(unittest.TestCase):
             val_dataloader=self.val_config,
         )
         val_loader = dm.val_dataloader()
-        self.assertFalse(val_loader.shuffle)
+        # PyTorch 2.x DataLoader has no .shuffle; check sampler type instead
+        self.assertNotIsInstance(val_loader.sampler, RandomSampler)
 
     def test_train_dataloader_uses_dataset_collate_fn(self):
         dm = DataModule(train_dataloader=self.train_config)
@@ -134,11 +136,12 @@ class TestDataModuleMetadataMode(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name)
 
-        metadata_dir = self.root / "metadata"
-        metadata_dir.mkdir()
-        (metadata_dir / "scene0001.json").write_text("{}", encoding="utf-8")
-        metadata_list = self.root / "valid.json"
-        metadata_list.write_text('[{"metadata_path": "scene0001.json"}]', encoding="utf-8")
+        # mirrors data/dev_set/metadata/valid.json + valid/*.json layout
+        metadata_list = self.root / "metadata" / "valid.json"
+        metadata_list.parent.mkdir(parents=True)
+        (metadata_list.parent / "valid").mkdir(exist_ok=True)
+        (metadata_list.parent / "valid" / "scene0001.json").write_text("{}", encoding="utf-8")
+        metadata_list.write_text('[{"metadata_path": "valid/scene0001.json"}]', encoding="utf-8")
 
         self.train_config = {
             "batch_size": 1,

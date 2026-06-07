@@ -211,7 +211,12 @@ class TestGenerateOutput(unittest.TestCase):
 
         item = ds._generate(mock_s3)
 
-        self.assertEqual(item["labels"].tolist(), [0, 1, ds.silence_idx])
+        expected_labels = [
+            LABELS["dcase2026t4"].index("Speech"),
+            LABELS["dcase2026t4"].index("Clapping"),
+            ds.silence_idx,
+        ]
+        self.assertEqual(item["labels"].tolist(), expected_labels)
         self.assertEqual(item["doas"].shape, (3, 3))
         self.assertEqual(item["active"].tolist(), [True, True, False])
         self.assertEqual(item["label"], ["Speech", "Clapping", "silence"])
@@ -260,14 +265,14 @@ class TestMetadataMode(unittest.TestCase):
 
     @patch("src.datamodules.new_dataset.SpAudSyn")
     def test_metadata_getitem_uses_from_metadata(self, mock_sp_aud_syn_cls):
-        metadata_dir = self.root / "metadata"
-        metadata_dir.mkdir()
-        metadata_file = metadata_dir / "scene0001.json"
+        metadata_list = self.root / "metadata" / "valid.json"
+        metadata_list.parent.mkdir(parents=True)
+        metadata_file = metadata_list.parent / "valid" / "scene0001.json"
+        metadata_file.parent.mkdir(exist_ok=True)
         metadata_file.write_text("{}", encoding="utf-8")
 
-        metadata_list = self.root / "valid.json"
         metadata_list.write_text(
-            '[{"metadata_path": "scene0001.json"}]',
+            '[{"metadata_path": "valid/scene0001.json"}]',
             encoding="utf-8",
         )
 
