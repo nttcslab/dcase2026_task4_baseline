@@ -230,7 +230,8 @@ class DatasetS3(torch.utils.data.Dataset):
             labels.extend([self.silence_idx] * npad)
             
         # 2. DoA 좌표 추출 (빈 슬롯은 [0.0, 0.0, 0.0] 패딩)
-        doas = [fge['event_position'][0] for fge in output['fg_events']]
+        #   synthesize() 출력의 fg_event는 위치를 metadata 안에 담아 반환한다.
+        doas = [fge['metadata']['event_position'][0] for fge in output['fg_events']]
         if npad > 0:
             doas.extend([[0.0, 0.0, 0.0] for _ in range(npad)])
             
