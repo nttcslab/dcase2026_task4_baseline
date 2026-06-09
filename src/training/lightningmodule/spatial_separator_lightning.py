@@ -30,7 +30,7 @@ def _extract_doa_from_metadata(metadata_list, K: int, device) -> torch.Tensor:
         for k, ev in enumerate(events):
             if k >= K:
                 break
-            pos = ev.get('event_position', [[0, 0, 0]])
+            pos = ev.get('metadata', {}).get('event_position', [[0, 0, 0]])
             xyz = pos[0] if isinstance(pos[0], (list, tuple)) else pos
             doas[b, k, 0] = xyz[0]
             doas[b, k, 1] = xyz[1]

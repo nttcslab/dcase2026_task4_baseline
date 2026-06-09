@@ -193,23 +193,15 @@ class SpatialConditionedSeparator(nn.Module):
     def forward(self, fused, doa_pred):
         B, D, Freq, T = fused.shape
         masks = []
-        active = []
 
         for k in range(self.K_max):
             doa_k = doa_pred[:, k, :]             # (B, 3)
-            is_active = (doa_k.norm(dim=-1) > self.doa_threshold)
             conditioned = self._film(fused, doa_k)  # (B, D, F, T)
             mask_k = self.mask_decoder(conditioned).squeeze(1)      # (B, F, T)
-            
-            mask_k = mask_k * is_active.float().view(B, 1, 1)
-            active.append(is_active)
             masks.append(mask_k)
 
-        return (
-            torch.stack(masks, dim=1),  # (B, K_max, F, T)
-            torch.stack(active, dim=1)
-        )
-
+        return torch.stack(masks, dim=1)  # (B, K_max, F, T)
+        
 class WaveformReconstructor(nn.Module):
     def __init__(self, n_fft=1024, hop_length=320):
         super().__init__()
@@ -299,7 +291,7 @@ class SpatialSeparatorModel(nn.Module):
         doa_pred = self.doa_estimator(fused) # (B, K_max, 3)
 
         # 5. Separation (DoA conditioning만, class 없이)
-        masks, active = self.separator(fused, doa_pred)
+        masks = self.separator(fused, doa_pred)
         # masks  : (B, K_max, F, T_frames)
         # active : (B, K_max) bool  → K = active.sum(dim=-1)
 
@@ -307,13 +299,12 @@ class SpatialSeparatorModel(nn.Module):
         waveforms = self.reconstructor(mix_spec_w, masks, T)   # (B, K_max, T)
 
         # 7. Class 예측 (separated waveform에 BEATs 직접 적용)
-        class_logits = self.classifier(waveforms, active)      # (B, K_max, n_classes + 1)
+        class_logits = self.classifier(waveforms, active=None)      # (B, K_max, n_classes + 1)
 
         return {
             "waveforms": waveforms,
             "masks": masks,
             "doa_pred": doa_pred,
             "class_logits": class_logits,
-            "active": active,
-            "k_pred": active.sum(dim=-1)
+            "k_pred": (class_logits.argmax(dim=-1) != self.n_classes).sum(dim=-1)
         }
