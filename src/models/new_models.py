@@ -13,8 +13,6 @@ class SpatialFeatureExtractor(nn.Module):
         self.n_fft = n_fft
         self.hop_length = hop_length
 
-        self.mel_transform = torchaudio.transforms.MelSpectrogram(sample_rate=32000, n_fft=n_fft, hop_length=hop_length, n_mels=128)
-
     def stft(self, x):
         window = torch.hann_window(self.n_fft, device=x.device)
         return torch.stft(x, self.n_fft, self.hop_length, window=window, return_complex=True)
@@ -55,10 +53,9 @@ class SpatialFeatureExtractor(nn.Module):
 
         spatial_feat = torch.cat([iv, ipd_feat, ild_feat], dim=1)  # (B, 12, F, T)
 
-        w_mel = self.mel_transform(mixture[:, 0])
-        w_mel = (w_mel + eps).log().unsqueeze(1) # (B, 1, n_mels, T_mel)             
+        w_raw = mixture[:, 0, :]            
 
-        return spatial_feat, w_mel, W
+        return spatial_feat, w_raw, W
     
 class BEATS(nn.Module):
     def __init__(self):
@@ -71,8 +68,8 @@ class BEATS(nn.Module):
             p.requires_grad= False
         print('BEATs Frozen')
 
-    def forward(self, w_mel):
-        features, _ = self.beats.extract_features(w_mel.squeeze(1), padding_mask=None)
+    def forward(self, w_raw):
+        features, _ = self.beats.extract_features(w_raw, padding_mask=None)
         return features
 
 class BEATsPooledCrossAttn(nn.Module):
@@ -150,7 +147,7 @@ class DoAEstimator(nn.Module):
         ])
 
     def forward(self, fused):
-        B, D, F, T = fused.shape
+        B, D, Freq, T = fused.shape
         feat = fused.flatten(2).permute(0, 2, 1)
         keys = self.key_proj(feat)
         queries = self.query_proj(self.slot_queries)
@@ -193,8 +190,8 @@ class SpatialConditionedSeparator(nn.Module):
         beta  = beta.unsqueeze(-1).unsqueeze(-1)
         return feat * (1 + gamma) + beta # (B, D, F, T)
 
-    def forward(self, fused, doa_pred, class_logits, k_pred):
-        B, D, F, T = fused.shape
+    def forward(self, fused, doa_pred):
+        B, D, Freq, T = fused.shape
         masks = []
         active = []
 
@@ -220,12 +217,12 @@ class WaveformReconstructor(nn.Module):
         self.hop_length = hop_length
 
     def forward(self, mix_spec_w, masks, original_length):
-        B, K, F, T_frames = masks.shape
+        B, K, Freq, T_frames = masks.shape
         window = torch.hann_window(self.n_fft, device=mix_spec_w.device)
 
         if masks.shape[-2:] != mix_spec_w.shape[-2:]:
             masks = F.interpolate(
-                masks.view(B * K, 1, F, T_frames),
+                masks.view(B * K, 1, Freq, T_frames),
                 size=mix_spec_w.shape[-2:],
                 mode="bilinear", align_corners=False,
             ).view(B, K, *mix_spec_w.shape[-2:])
@@ -263,11 +260,9 @@ class BEATsClassifier(nn.Module):
 
         for k in range(K):
             wav_k = waveforms[:, k, :]               # (B, T)
-            mel = self.mel_transform(wav_k)          # (B, n_mels, T_mel)
-            mel = (mel + eps).log().unsqueeze(1)      # (B, 1, n_mels, T_mel)
 
             with torch.no_grad():
-                tokens = self.beats(mel)             # (B, N, 768)
+                tokens = self.beats(wav_k)             # (B, N, 768)
 
             token_mean = tokens.mean(dim=1)          # (B, 768)
             logits_k = self.head(token_mean)         # (B, n_classes + 1)
@@ -291,11 +286,11 @@ class SpatialSeparatorModel(nn.Module):
         B, C, T = mixture.shape
 
         # 1. Feature extraction
-        spatial_feat, w_mel, mix_spec_w = self.spatial_extractor(mixture)
+        spatial_feat, w_raw, mix_spec_w = self.spatial_extractor(mixture)
 
         # 2. BEATs tokens (frozen) — encoder fusion용
         with torch.no_grad():
-            beats_tokens = self.beats(w_mel) # (B, ~992, 768)
+            beats_tokens = self.beats(w_raw) # (B, ~992, 768)
 
         # 3. Spatial encoding + BEATs fusion
         fused = self.encoder(spatial_feat, beats_tokens) # (B, D, F, T)

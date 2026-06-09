@@ -1,0 +1,179 @@
+---
+# ─────────────────────────────────────────────────────────
+# config/our_model/spatial_separator_smoke.yaml
+#
+# 스모크 테스트: dataset_length=8, val 끔, 1-step만 돌아가는지 확인
+# 실전 학습: dataset_length, batch_size, limit_* 값을 올려서 사용
+# ─────────────────────────────────────────────────────────
+task_name: spatial_separator_smoke
+description: "SpatialSeparatorModel smoke test (1-step, no val)"
+
+deterministic: True
+manual_seed: 0
+
+# ════════════════════════════════════════════════════════════
+# DataModule  (baseline DatasetS3 generate 모드 그대로 사용)
+# ════════════════════════════════════════════════════════════
+datamodule:
+    module: src.datamodules.datamodule
+    main: DataModule
+    args:
+        train_dataloader:
+            batch_size: 2          # 스모크: 작게. 실전: 4~8
+            num_workers: 0         # 스모크: 0 (fork 없이 빠름). 실전: 4
+            persistent_workers: false
+            dataset:
+                module: src.datamodules.dataset
+                main: DatasetS3
+                args:
+                    config:
+                        mode: generate
+                        spatial_sound_scene:
+                            duration: 10.0
+                            sr: 32000
+                            max_event_overlap: 3
+                            max_event_dur: 10.0
+                            ref_db: -55
+                            foreground_dir: data/dev_set/sound_event/train
+                            background_dir: data/dev_set/noise/train
+                            interference_dir: data/dev_set/interference/train
+                            room_config:
+                                module: src.modules.spatial_audio_synthesizer.room
+                                main: SofaRoom
+                                args:
+                                    path: data/dev_set/room_ir/train
+                                    direct_range_ms: [6, 50]
+                        dupse_rate: 0.5
+                        dupse_min_angle: 60.0
+                        max_n_dupse: 2
+                        dupse_exclusion_folder_depth: 1
+                        snr_range: [5, 20]
+                        nevent_range: [1, 3]
+                        ninterference_range: [0, 2]
+                        inteference_snr_range: [0, 15]
+                        dataset_length: 8     # ← 스모크용: 8개. 실전: 10112
+                        shuffle_label: true
+                        fg_return:
+                            dry: true
+                            dry_channel: 0
+                            metadata: true   # DoA ground-truth 추출에 필요
+                    n_sources: 3
+                    label_set: dcase2026t4
+                    return_source: true
+                    label_vector_mode: stack    # [K, 18] 형태로 받아야 DoA 슬롯 매핑 가능
+                    silence_label_mode: zeros
+                    return_meta: true           # metadata dict 포함 (event_position 접근)
+
+        # ─── val은 스모크 시 완전히 비활성화 ───────────────────
+        # is_validation: false 로 설정하면 validation_step 자체가 등록 안 됨.
+        # 아래 val_dataloader 섹션은 실전 학습 때 활성화하세요.
+        #
+        # val_dataloader:
+        #     batch_size: 2
+        #     num_workers: 2
+        #     persistent_workers: false
+        #     dataset:
+        #         module: src.datamodules.dataset
+        #         main: DatasetS3
+        #         args:
+        #             config:
+        #                 mode: metadata
+        #                 metadata_list: data/dev_set/metadata/valid.json
+        #                 fg_return: {dry: true, dry_channel: 0, metadata: true}
+        #                 sr: 32000
+        #             n_sources: 3
+        #             label_set: dcase2026t4
+        #             return_source: true
+        #             label_vector_mode: stack
+        #             silence_label_mode: zeros
+        #             return_meta: true
+
+# ════════════════════════════════════════════════════════════
+# LightningModule
+# ════════════════════════════════════════════════════════════
+lightning_module:
+    module: src.training.lightningmodule.spatial_separator_lightning
+    main: SpatialSeparatorLightning
+    args:
+        model:
+            module: src.models.new_models
+            main: SpatialSeparatorModel
+            args:
+                n_classes: 18
+                hidden_dim: 256
+                n_compressed: 32
+                doa_threshold: 0.1
+                K_max: 3
+
+        loss:
+            module: src.training.loss.final_joint_pit_loss
+            main: get_loss_func
+            args:
+                w_wav: 1.0
+                w_doa: 0.5
+                w_cls: 0.5
+
+        optimizer:
+            module: torch.optim
+            main: AdamW
+            args:
+                params: null          # BaseLightningModule이 자동 할당
+                lr: 0.0001
+                betas: [0.9, 0.999]
+                eps: 1.0e-8
+                weight_decay: 0.01
+                amsgrad: true
+
+        is_validation: false          # 스모크: val 끔. 실전: true
+
+# ════════════════════════════════════════════════════════════
+# Trainer
+# ════════════════════════════════════════════════════════════
+train:
+    callbacks:
+        -
+            name: checkpoint
+            module: lightning.pytorch.callbacks
+            main: ModelCheckpoint
+            args:
+                every_n_epochs: 1
+                filename: "{epoch}"
+                save_top_k: 1
+                save_last: true
+                monitor: epoch_train/loss   # val 없으니 train loss 모니터링
+                mode: min
+                verbose: false
+                dirpath: null
+
+        -
+            name: tqdm
+            module: lightning.pytorch.callbacks
+            main: TQDMProgressBar
+            args:
+                refresh_rate: 1
+                process_position: 0
+
+    trainer:
+        module: lightning.pytorch
+        main: Trainer
+        args:
+            accelerator: auto
+            devices: auto
+            strategy: auto
+            num_nodes: 1
+            precision: 32-true
+            logger: null
+            fast_dev_run: false
+            max_epochs: 1
+            log_every_n_steps: 1
+            use_distributed_sampler: true
+            sync_batchnorm: false
+            check_val_every_n_epoch: 1
+            val_check_interval: 1.0
+            num_sanity_val_steps: 0       # ← 필수: val sanity check 끔
+            enable_checkpointing: true
+            enable_progress_bar: true
+            enable_model_summary: true
+            limit_train_batches: 1        # ← 스모크: 1-step만. 실전: null
+            limit_val_batches: 0          # ← 스모크: val 완전 비활성
+            gradient_clip_val: 0.5
