@@ -223,7 +223,7 @@ Accuracy (source) : 70.394
 To evaluate other model checkpoints, specify their paths under `tagger_ckpt` and `separator_ckpt` in the corresponding config files located in `src/evaluation/eval_configs`.
 
 ## Generate Data for Final Submission
-An example submission package can be downloaded [here](https://github.com/nttcslab/dcase2026_task4_baseline/releases/download/v1.1.0/task4.zip)
+An example submission package can be downloaded [here](https://github.com/nttcslab/dcase2026_task4_baseline/releases/download/v1.1.0/task4.zip).
 The following steps describe how to generate the submission ZIP file.
 
 Download evaluation dataset
