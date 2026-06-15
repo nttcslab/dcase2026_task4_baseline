@@ -223,6 +223,9 @@ Accuracy (source) : 70.394
 To evaluate other model checkpoints, specify their paths under `tagger_ckpt` and `separator_ckpt` in the corresponding config files located in `src/evaluation/eval_configs`.
 
 ## Generate Data for Final Submission
+An example submission package can be downloaded [here](https://github.com/nttcslab/dcase2026_task4_baseline/releases/download/v1.1.0/task4.zip)
+The following steps describe how to generate the submission ZIP file.
+
 Download evaluation dataset
 ```
 # Download all files from https://zenodo.org/records/20425860 and unzip
@@ -248,6 +251,11 @@ These commands will generate audio files in the specified `output_dir`, and then
 ## License 
 This project is licensed under the terms described in [LICENSE.pdf](LICENSE.pdf).
 
+# Release Notes
+- **v1.1.0**  
+  This version provides support for downloading and processing the Evaluation dataset.
+- **v1.0.0**  
+  This is the first release of the baseline system implementation for the DCASE2026 Challenge Task 4: Spatial Semantic Segmentation of Sound Scenes (DCASE2026T4).
 
 # Citation
 If you use this system, please cite the following papers:
