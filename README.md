@@ -246,7 +246,8 @@ bash generate_waveform.sh --config src/evaluation/eval_configs/m2dat_4c_resunetk
 # output: workspace/submission/Nguyen_NTT_task4_2_out.zip
 ```
 
-These commands will generate audio files in the specified `output_dir`, and then create the zip files, `Nguyen_NTT_task4_1_out.zip` and `Nguyen_NTT_task4_2_out.zip`, which are ready for the submission.
+These commands generate audio files in the specified `output_dir`, and then create the zip files, `Nguyen_NTT_task4_1_out.zip` and `Nguyen_NTT_task4_2_out.zip`, which are ready for submission.
+The ZIP files may be uploaded to a file-sharing service (e.g., Google Drive), and the corresponding URL(s) should be provided in an audio URL file following the format shown in the example submission package (see `Nguyen_NTT_task4.audio_url.txt`).
 
 ## License 
 This project is licensed under the terms described in [LICENSE.pdf](LICENSE.pdf).
